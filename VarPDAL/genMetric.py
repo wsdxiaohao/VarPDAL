@@ -120,7 +120,7 @@ def genMetric(Stack,optional):
     ###############
     
     U_1 = 1*(A_k.dot(V))*Eig_pos
-    U_2 = 1*(A_k.dot(V))*Eig_neg
+    U_2 = 0.99*(A_k.dot(V))*Eig_neg
    
     
     

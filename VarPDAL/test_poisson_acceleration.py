@@ -15,15 +15,15 @@ Created on Tue Jan 10 21:40:02 2023
 """
 
 #################################################################
-### Image deblurring problem under poison noise ###############################################
+### Image denoising problem under poison noise ###############################################
 #                                                               #
 # Optimization problem:                                         #
 #                                                               #
-#   min_x KL(b,Ax) + ||Dx||_{2,1}                               #
+#   min_x KL(b,x) + mu||Dx||_{2,1}                               #
 #  subject to x_{i,j} > epsilon                                 #
 #where                                                          #
 #   D  spatial finite difference                                #
-#   KL(b,Ax) sum_{i,j} Ax_{i,j} - b_{i,j} log Ax_{i,j} neg      #
+#   KL(b,x) sum_{i,j} x_{i,j} - b_{i,j} log x_{i,j}       #
 #Model:                                                         #
 #   A     is a blurring operator                                #
 #   b     is the blurry image                                   #
@@ -35,8 +35,8 @@ Created on Tue Jan 10 21:40:02 2023
 
 
 from PrLiPm import PDHG_PrLiPm
-from PDHG_varlin_acc import PDHG_VaLiPm_acc
-from PDHG_LiPm_acc import PDHG_LiPm_acc
+from VarPDAL_acc import VarPDAL_acc
+from PDAL_acc import PDAL_acc
 #import scipy as sp
 
 from mymathtools import *  # (waiting for editing)
@@ -92,9 +92,11 @@ def Model(filename, mu_init):
     A = sp.identity(N)
     b = oimg
     np.random.seed(0)
-    PEAK = 0.01
-    noisy = np.random.poisson(b / 255.0 * PEAK) / PEAK / 255
-    b = A.dot(b) + noisy
+    PEAK = 100000
+    noisy = np.random.poisson(b /255.0 * PEAK) / PEAK *255
+    b = noisy
+    #b = b + np.random.normal(0.0, 0.1, (N,1))#just for test
+    #b = A.dot(b) + noisy
     # b=sp_noise(b,0.1)
 
     b = b.flatten()
@@ -115,7 +117,7 @@ def Model(filename, mu_init):
 ###############################################################################
 np.random.seed(0)
 filename = 'Diana240'
-model = Model("Diana240", 0.0001)
+model = Model("Diana240", 0.05)
 
 
 compute_optimal_value = False;
@@ -136,6 +138,8 @@ def objectiveSmooth(model, x_init):
     #
     Ax = A.dot(x)
     KL = np.sum(Ax - b*np.log(Ax))
+    #test quadratic
+    #KL = (x - b).T.dot(x-b)
     return KL
 
 
@@ -202,6 +206,9 @@ def grad_Smooth(model, options, x0):
     x = x0.copy()
     grad = 1-b/(A.dot(x))
     grad = A.T.dot(grad)
+    
+    #test quadratic function
+    #grad=2*(x-b)
     return grad
 
 
@@ -224,8 +231,9 @@ else:
 maxiter = 100
 check = 10
 tol = 0.00001
-bound = 50
-cvx = 0.001
+bound = 100 #C_M
+cvx = 1 # gamma
+
 # UZILLLIey vARIABLES
 N = model['N']
 # initialization
@@ -235,10 +243,10 @@ y0 = 1*np.ones(2*model['N'])
 # Lipschitz constant
 A = model['A']
 K = model['K']
-Lip = 1#sp.sparse.linalg.norm(A.T.dot(A))
-LipK = 1  # p.sparse.linalg.norm(K.T.dot(K))
+Lip = 2 #Lipschitz constant of function h
+LipK = sp.linalg.norm(K.T.dot(K))
 
-sig0 = 1/(LipK*Lip)
+sig0 = 1/(LipK+Lip) #I used 0.01 for the figures in the paper. but it is not
 
 # taping:
 xs = []
@@ -251,38 +259,142 @@ nams = []
 
 # turn algorithms to be run on or off
 run_PDHG = 1
-run_PDHG_LiPm_acc = 1
-run_PDHG_VaLiPm_acc1 = 1
-run_PDHG_VaPm_acc1 = 1
+run_PDAL_acc= 1
+run_VarPDAL_acc1 = 1
 
-run_PDHG_VaLiPm_acc3 = 1
-run_PDHG_VaLiPm_acc5 = 1
-run_PDHG_VaLiPm_acc7 = 1
-run_PDHG_VaLiPm_acc9 = 1
+run_VarPDAL_acc3 = 1
+run_VarPDAL_acc5 = 1
+run_VarPDAL_acc7 = 1
+run_VarPDAL_acc9 = 1
 
 if compute_optimal_value:  # optimal solution is compyted using FISTA
-    maxiter = 150
+    maxiter = 500
     check = 1
     run_PDHG = 0
-    run_PDHG_LiPm_acc = 1
-    run_PDHG_VaLiPm_acc = 0
-    #run_PDHG_PrLiPm = 0;
-    run_PDHG = 0
-    run_PDHG_VaLiPm_acc1 = 0
+    run_PDAL_acc= 1
+    run_VarPDAL_acc1 = 0
     run_PDHG_VaPm_acc1 = 0
 
-    run_PDHG_VaLiPm_acc3 = 0
-    run_PDHG_VaLiPm_acc5 = 0
-    run_PDHG_VaLiPm_acc7 = 0
-    run_PDHG_VaLiPm_acc9 = 0
+    run_VarPDAL_acc3 = 0
+    run_VarPDAL_acc5 = 0
+    run_VarPDAL_acc7 = 0
+    run_VarPDAL_acc9 = 0
 #####################################################################
-# Lip =
-# print('Lip=%f'%Lip)
 
 
 
+#########################3
+#####################################################################
+if run_PDHG:
 
-if run_PDHG_VaLiPm_acc1:
+    print('')
+    print('********************************************************')
+    print('***PDHG Line search on the Primal varaible***')
+    print('***********')
+
+    options = {
+        'init_x':          x0,
+        'init_y':          y0,
+        'theta':          1.0,
+        'beta':            1,
+        'delta':           0.9,
+        'epsilon':         1e-1,
+        'storeResidual': True,
+        'storeTime':     True,
+        'stepsize':       sig0,
+        'storePoints': True,
+
+        'storeObjective': True,
+        'storeBeta': True,
+        'line_search':  False,
+        'strong convexity': cvx,
+        'metric bound': bound,
+
+    }
+
+    oracle = {
+        'obj':   objective,
+        'objNonSm':    objectiveNonSmooth,
+        'grad':   grad_Smooth,
+        'prox_g':   prox_orthant,
+        'prox_fstar':  prox_proj_ball,
+        'residual': residual,
+        'PrimalSmooth': objectiveSmooth
+    }
+
+    output = PDAL_acc(model, oracle, options, tol, maxiter, check)
+
+    xs.append(output['sol'])
+    rs.append(output['seq_res'])
+    ts.append(output['seq_time'])
+    cols.append((0, 0, 0.5, 1))
+    legs.append('PDHG')
+    nams.append('Lin')
+    x = output['sol']
+    nx = model['nx']
+    ny = model['ny']
+    if compute_optimal_value:
+        np.save('data_poisson_acc.npy',rs[0][-1], allow_pickle=True, fix_imports=True)
+    mpimg.imsave(filename + "reconstruction2.png", x.reshape(ny,nx), cmap=plt.cm.gray);
+############################################################################
+#####################################################################
+if run_PDAL_acc:
+
+    print('')
+    print('********************************************************')
+    print('***PDHG Line search on the Primal varaible***')
+    print('***********')
+
+    options = {
+        'init_x':          x0,
+        'init_y':          y0,
+        'theta':          1.0,
+        'beta':            1,
+        'delta':           0.9,
+        'epsilon':         1e-1,
+        'storeResidual': True,
+        'storeTime':     True,
+        'stepsize':       sig0,#0.01
+        'storePoints': True,
+
+        'storeObjective': True,
+        'storeBeta': True,
+        'line_search':  True,
+        'strong convexity': cvx,
+        'metric bound':   bound,
+
+    }
+
+    oracle = {
+        'obj':   objective,
+        'objNonSm':    objectiveNonSmooth,
+        'grad':   grad_Smooth,
+        'prox_g':   prox_orthant,
+        'prox_fstar':  prox_proj_ball,
+        'residual': residual,
+        'PrimalSmooth': objectiveSmooth
+    }
+
+    output = PDAL_acc(model, oracle, options, tol, maxiter, check)
+
+    xs.append(output['sol'])
+    rs.append(output['seq_res'])
+    ts.append(output['seq_time'])
+    cols.append((0, 0, 1, 1))
+    legs.append('APDAL')
+    nams.append('Lin')
+    x = output['sol']
+    nx = model['nx']
+    ny = model['ny']
+    if compute_optimal_value:
+        np.save('data_poisson_acc.npy', rs[0][-1],
+                allow_pickle=True, fix_imports=True)
+    mpimg.imsave(filename + "reconstruction(line search acc2).png",
+                 x.reshape(ny, nx), cmap=plt.cm.gray)
+############################################################################
+
+
+if run_VarPDAL_acc1:
     m = 1
     print('')
     print('********************************************************')
@@ -298,7 +410,114 @@ if run_PDHG_VaLiPm_acc1:
         'epsilon':         1e-1,
         'storeResidual': True,
         'storeTime':     True,
-        'stepsize':       0.01,
+        'stepsize':       sig0,#0.01
+        'storePoints': True,
+        'memory':      m,
+        'storeObjective': True,
+        'storeBeta': True,
+        'line_search':  False,
+        'method':      'mBFGS',
+        'strong convexity': cvx,
+        'metric bound':   bound,
+    }
+
+    oracle = {
+        'obj':   objective,
+        'objNonSm':    objectiveNonSmooth,
+        'grad':   grad_Smooth,
+        'prox_g':   prox_orthant,
+        'prox_fstar':  prox_proj_ball,
+        'residual': residual,
+        'PrimalSmooth': objectiveSmooth
+    }
+
+    output = VarPDAL_acc(model, oracle, options, tol, maxiter, check)
+
+    xs.append(output['sol'])
+    rs.append(output['seq_res'])
+    ts.append(output['seq_time'])
+    cols.append((1, 0.0, 0.5, 1))
+    legs.append('VarPDHG memory=%d' % m)
+    nams.append('Lin')
+    x = output['sol']
+    nx = model['nx']
+    ny = model['ny']
+
+    #mpimg.imsave(filename + "reconstruction(variable metric line search).png", x.reshape(ny,nx), cmap=plt.cm.gray);
+############################################################################
+############################################################################
+
+
+if run_VarPDAL_acc1:
+    m = 5
+    print('')
+    print('********************************************************')
+    print('***PDHGVarible Line search on the Primal varaible***')
+    print('***********')
+
+    options = {
+        'init_x':          x0,
+        'init_y':          y0,
+        'theta':          1.0,
+        'beta':            1,
+        'delta':           1,
+        'epsilon':         1e-1,
+        'storeResidual': True,
+        'storeTime':     True,
+        'stepsize':       sig0,#0.01
+        'storePoints': True,
+        'memory':      m,
+        'storeObjective': True,
+        'storeBeta': True,
+        'line_search':  False,
+        'method':      'mBFGS',
+        'strong convexity': cvx,
+        'metric bound':   bound,
+    }
+
+    oracle = {
+        'obj':   objective,
+        'objNonSm':    objectiveNonSmooth,
+        'grad':   grad_Smooth,
+        'prox_g':   prox_orthant,
+        'prox_fstar':  prox_proj_ball,
+        'residual': residual,
+        'PrimalSmooth': objectiveSmooth
+    }
+
+    output = VarPDAL_acc(model, oracle, options, tol, maxiter, check)
+
+    xs.append(output['sol'])
+    rs.append(output['seq_res'])
+    ts.append(output['seq_time'])
+    cols.append((1, 0.0, 0.0, 1))
+    legs.append('VarPDHG memory=%d' % m)
+    nams.append('Lin')
+    x = output['sol']
+    nx = model['nx']
+    ny = model['ny']
+
+    #mpimg.imsave(filename + "reconstruction(variable metric line search).png", x.reshape(ny,nx), cmap=plt.cm.gray);
+############################################################################
+
+
+if run_VarPDAL_acc1:
+    m = 1
+    print('')
+    print('********************************************************')
+    print('***PDHGVarible Line search on the Primal varaible***')
+    print('***********')
+
+    options = {
+        'init_x':          x0,
+        'init_y':          y0,
+        'theta':          1.0,
+        'beta':            1,
+        'delta':           1,
+        'epsilon':         1e-1,
+        'storeResidual': True,
+        'storeTime':     True,
+        'stepsize':       sig0,#0.01
         'storePoints': True,
         'memory':      m,
         'method':      'mBFGS',
@@ -320,7 +539,7 @@ if run_PDHG_VaLiPm_acc1:
         'PrimalSmooth': objectiveSmooth
     }
 
-    output = PDHG_VaLiPm_acc(model, oracle, options, tol, maxiter, check)
+    output = VarPDAL_acc(model, oracle, options, tol, maxiter, check)
 
     xs.append(output['sol'])
     rs.append(output['seq_res'])
@@ -336,7 +555,7 @@ if run_PDHG_VaLiPm_acc1:
 ############################################################################
 
 ############################################################################
-if run_PDHG_VaLiPm_acc3:
+if run_VarPDAL_acc3:
     m = 3
 
     print('')
@@ -353,7 +572,7 @@ if run_PDHG_VaLiPm_acc3:
         'epsilon':         1e-1,
         'storeResidual': True,
         'storeTime':     True,
-        'stepsize':       0.01,
+        'stepsize':       sig0,
         'storePoints': True,
         'memory':      m,
         'storeObjective': True,
@@ -374,7 +593,7 @@ if run_PDHG_VaLiPm_acc3:
         'PrimalSmooth': objectiveSmooth
     }
 
-    output = PDHG_VaLiPm_acc(model, oracle, options, tol, maxiter, check)
+    output = VarPDAL_acc(model, oracle, options, tol, maxiter, check)
 
     xs.append(output['sol'])
     rs.append(output['seq_res'])
@@ -386,13 +605,13 @@ if run_PDHG_VaLiPm_acc3:
     nx = model['nx']
     ny = model['ny']
 
-    mpimg.imsave(filename + "reconstruction(variable metric line search).png",
+    mpimg.imsave(filename + "reconstruction(variable metric line search2).png",
                  x.reshape(ny, nx), cmap=plt.cm.gray)
 ############################################################################
 
 
 ############################################################################
-if run_PDHG_VaLiPm_acc5:
+if run_VarPDAL_acc5:
     m = 5
     print('')
     print('********************************************************')
@@ -408,7 +627,7 @@ if run_PDHG_VaLiPm_acc5:
         'epsilon':         1e-1,
         'storeResidual': True,
         'storeTime':     True,
-        'stepsize':       0.01,
+        'stepsize':       sig0,
         'storePoints': True,
         'memory':      m,
         'storeObjective': True,
@@ -429,7 +648,7 @@ if run_PDHG_VaLiPm_acc5:
         'PrimalSmooth': objectiveSmooth
     }
 
-    output = PDHG_VaLiPm_acc(model, oracle, options, tol, maxiter, check)
+    output = VarPDAL_acc(model, oracle, options, tol, maxiter, check)
 
     xs.append(output['sol'])
     rs.append(output['seq_res'])
@@ -445,7 +664,7 @@ if run_PDHG_VaLiPm_acc5:
 ############################################################################
 
 
-if run_PDHG_VaLiPm_acc7:
+if run_VarPDAL_acc7:
     m = 7
     print('')
     print('********************************************************')
@@ -461,7 +680,7 @@ if run_PDHG_VaLiPm_acc7:
         'epsilon':         1e-1,
         'storeResidual': True,
         'storeTime':     True,
-        'stepsize':       0.01,
+        'stepsize':       sig0,
         'storePoints': True,
         'memory':      m,
         'storeObjective': True,
@@ -482,7 +701,7 @@ if run_PDHG_VaLiPm_acc7:
         'PrimalSmooth': objectiveSmooth
     }
 
-    output = PDHG_VaLiPm_acc(model, oracle, options, tol, maxiter, check)
+    output = VarPDAL_acc(model, oracle, options, tol, maxiter, check)
 
     xs.append(output['sol'])
     rs.append(output['seq_res'])
@@ -497,7 +716,7 @@ if run_PDHG_VaLiPm_acc7:
     #mpimg.imsave(filedeblurring_name + "reconstruction(variable metric line search).png", x.reshape(ny,nx), cmap=plt.cm.gray);
 
 ############################################################################
-if run_PDHG_VaLiPm_acc9:
+if run_VarPDAL_acc9:
     m = 9
     print('')
     print('********************************************************')
@@ -513,7 +732,7 @@ if run_PDHG_VaLiPm_acc9:
         'epsilon':         1e-1,
         'storeResidual': True,
         'storeTime':     True,
-        'stepsize':       0.01,
+        'stepsize':       sig0,
         'storePoints': True,
         'memory':      m,
         'storeObjective': True,
@@ -534,7 +753,7 @@ if run_PDHG_VaLiPm_acc9:
         'PrimalSmooth': objectiveSmooth
     }
 
-    output = PDHG_VaLiPm_acc(model, oracle, options, tol, maxiter, check)
+    output = VarPDAL_acc(model, oracle, options, tol, maxiter, check)
 
     xs.append(output['sol'])
     rs.append(output['seq_res'])
@@ -685,245 +904,10 @@ plt.savefig('deblurring image under Poisson noise BFGS acc(time).pdf')
 plt.show()
 
 
-# taping:
-xs = []
-rs = []
-ts = []
-cols = []
-legs = []
-nams = []
 
 
-# turn algorithms to be run on or off
-run_PDHG = 1
-run_PDHG_LiPm_acc = 1
-run_PDHG_VaLiPm_acc1 = 1
-run_PDHG_VaPm_acc1 = 1
 
-run_PDHG_VaLiPm_acc3 = 1
-run_PDHG_VaLiPm_acc5 = 1
-run_PDHG_VaLiPm_acc7 = 1
-run_PDHG_VaLiPm_acc9 = 1
-
-
-#########################3
-#####################################################################
-if run_PDHG:
-
-    print('')
-    print('********************************************************')
-    print('***PDHG Line search on the Primal varaible***')
-    print('***********')
-
-    options = {
-        'init_x':          x0,
-        'init_y':          y0,
-        'theta':          1.0,
-        'beta':            1,
-        'delta':           0.9,
-        'epsilon':         1e-1,
-        'storeResidual': True,
-        'storeTime':     True,
-        'stepsize':       0.01,
-        'storePoints': True,
-
-        'storeObjective': True,
-        'storeBeta': True,
-        'line_search':  False,
-        'strong convexity': 1,
-        'metric bound': bound,
-
-    }
-
-    oracle = {
-        'obj':   objective,
-        'objNonSm':    objectiveNonSmooth,
-        'grad':   grad_Smooth,
-        'prox_g':   prox_orthant,
-        'prox_fstar':  prox_proj_ball,
-        'residual': residual,
-        'PrimalSmooth': objectiveSmooth
-    }
-
-    output = PDHG_LiPm_acc(model, oracle, options, tol, maxiter, check)
-
-    xs.append(output['sol'])
-    rs.append(output['seq_res'])
-    ts.append(output['seq_time'])
-    cols.append((0, 0, 0.5, 1))
-    legs.append('PDHG')
-    nams.append('Lin')
-    x = output['sol']
-    nx = model['nx']
-    ny = model['ny']
-    if compute_optimal_value:
-        np.save('data_poisson_acc.npy',rs[0][-1], allow_pickle=True, fix_imports=True)
-    #mpimg.imsave(filename + "reconstruction(line search).png", x.reshape(ny,nx), cmap=plt.cm.gray);
-############################################################################
-
-#####################################################################
-if run_PDHG_LiPm_acc:
-
-    print('')
-    print('********************************************************')
-    print('***PDHG Line search on the Primal varaible***')
-    print('***********')
-
-    options = {
-        'init_x':          x0,
-        'init_y':          y0,
-        'theta':          1.0,
-        'beta':            1,
-        'delta':           0.9,
-        'epsilon':         1e-1,
-        'storeResidual': True,
-        'storeTime':     True,
-        'stepsize':       0.01,
-        'storePoints': True,
-
-        'storeObjective': True,
-        'storeBeta': True,
-        'line_search':  True,
-        'strong convexity': cvx,
-        'metric bound':   bound,
-
-    }
-
-    oracle = {
-        'obj':   objective,
-        'objNonSm':    objectiveNonSmooth,
-        'grad':   grad_Smooth,
-        'prox_g':   prox_orthant,
-        'prox_fstar':  prox_proj_ball,
-        'residual': residual,
-        'PrimalSmooth': objectiveSmooth
-    }
-
-    output = PDHG_LiPm_acc(model, oracle, options, tol, maxiter, check)
-
-    xs.append(output['sol'])
-    rs.append(output['seq_res'])
-    ts.append(output['seq_time'])
-    cols.append((0, 0, 1, 1))
-    legs.append('APDAL')
-    nams.append('Lin')
-    x = output['sol']
-    nx = model['nx']
-    ny = model['ny']
-    if compute_optimal_value:
-        np.save('data_poisson_acc.npy', rs[0][-1],
-                allow_pickle=True, fix_imports=True)
-    mpimg.imsave(filename + "reconstruction(line search acc).png",
-                 x.reshape(ny, nx), cmap=plt.cm.gray)
-############################################################################
-
-
-if run_PDHG_VaPm_acc1:
-    m = 1
-    print('')
-    print('********************************************************')
-    print('***PDHGVarible Line search on the Primal varaible***')
-    print('***********')
-
-    options = {
-        'init_x':          x0,
-        'init_y':          y0,
-        'theta':          1.0,
-        'beta':            1,
-        'delta':           1,
-        'epsilon':         1e-1,
-        'storeResidual': True,
-        'storeTime':     True,
-        'stepsize':       0.01,
-        'storePoints': True,
-        'memory':      m,
-        'storeObjective': True,
-        'storeBeta': True,
-        'line_search':  False,
-        'method':      'mBFGS',
-        'strong convexity': cvx,
-        'metric bound':   bound,
-    }
-
-    oracle = {
-        'obj':   objective,
-        'objNonSm':    objectiveNonSmooth,
-        'grad':   grad_Smooth,
-        'prox_g':   prox_orthant,
-        'prox_fstar':  prox_proj_ball,
-        'residual': residual,
-        'PrimalSmooth': objectiveSmooth
-    }
-
-    output = PDHG_VaLiPm_acc(model, oracle, options, tol, maxiter, check)
-
-    xs.append(output['sol'])
-    rs.append(output['seq_res'])
-    ts.append(output['seq_time'])
-    cols.append((1, 0.0, 0.5, 1))
-    legs.append('VarPDHG memory=%d' % m)
-    nams.append('Lin')
-    x = output['sol']
-    nx = model['nx']
-    ny = model['ny']
-
-    #mpimg.imsave(filename + "reconstruction(variable metric line search).png", x.reshape(ny,nx), cmap=plt.cm.gray);
-############################################################################
-############################################################################
-
-
-if run_PDHG_VaPm_acc1:
-    m = 5
-    print('')
-    print('********************************************************')
-    print('***PDHGVarible Line search on the Primal varaible***')
-    print('***********')
-
-    options = {
-        'init_x':          x0,
-        'init_y':          y0,
-        'theta':          1.0,
-        'beta':            1,
-        'delta':           1,
-        'epsilon':         1e-1,
-        'storeResidual': True,
-        'storeTime':     True,
-        'stepsize':       0.01,
-        'storePoints': True,
-        'memory':      m,
-        'storeObjective': True,
-        'storeBeta': True,
-        'line_search':  False,
-        'method':      'mBFGS',
-        'strong convexity': cvx,
-        'metric bound':   bound,
-    }
-
-    oracle = {
-        'obj':   objective,
-        'objNonSm':    objectiveNonSmooth,
-        'grad':   grad_Smooth,
-        'prox_g':   prox_orthant,
-        'prox_fstar':  prox_proj_ball,
-        'residual': residual,
-        'PrimalSmooth': objectiveSmooth
-    }
-
-    output = PDHG_VaLiPm_acc(model, oracle, options, tol, maxiter, check)
-
-    xs.append(output['sol'])
-    rs.append(output['seq_res'])
-    ts.append(output['seq_time'])
-    cols.append((1, 0.0, 0.0, 1))
-    legs.append('VarPDHG memory=%d' % m)
-    nams.append('Lin')
-    x = output['sol']
-    nx = model['nx']
-    ny = model['ny']
-
-    #mpimg.imsave(filename + "reconstruction(variable metric line search).png", x.reshape(ny,nx), cmap=plt.cm.gray);
-############################################################################
-
+"""
 
 if run_PDHG_VaLiPm_acc1:
     m = 1
@@ -1017,3 +1001,4 @@ plt.ylabel('Primal gap')
 plt.title('denoising')
 plt.savefig('deblurring image under Poisson noise BFGS acc(time) Second.pdf')
 plt.show()
+"""

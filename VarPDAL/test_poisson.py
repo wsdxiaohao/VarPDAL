@@ -194,9 +194,8 @@ else:
 ###############################################################################
 # load algorithm
 
-from PDHG_LiPm import PDHG_LiPm
-from PDHG_VaLiPm import PDHG_VaLiPm
-from PrLiPm import PDHG_PrLiPm
+from PDAL import PDAL
+from VarPDAL import VarPDAL
 ##################################################################
 #general parameter
 maxiter = 1000;
@@ -229,21 +228,19 @@ nams = [];
 
 
 # turn algorithms to be run on or off
-run_PDHG = 0;
-run_PDHG_LiPm = 0;
-run_PDHG_VaLiPm = 1;
-run_PDHG_PrLiPm = 0
+run_PDHG = 1;
+run_PDAL = 1;
+run_VarPDAL = 1;
 if compute_optimal_value: # optimal solution is compyted using FISTA
     maxiter = 10000;
     check = 1;
-    run_PDHG_LiPm = 1;
-    run_PDHG_VaLiPm = 0;
-    run_PDHG_PrLiPm = 0;
+    run_PDAL = 1;
+    run_VarPDAL = 0;
     run_PDHG = 0;
 #####################################################################
 #Lip =
 #print('Lip=%f'%Lip)
-"""
+
 #####################################################################
 if run_PDHG:
     
@@ -258,7 +255,7 @@ if run_PDHG:
         'theta':          1.0,
         'beta':            beta,
         'delta':           0.9,
-        'epsilon':         1e-10,
+        'epsilon':         1e-1,
         'storeResidual': True,
         'storeTime':     True,   
         'stepsize':       sig0,
@@ -267,6 +264,8 @@ if run_PDHG:
         'storeObjective':True,
         'storeBeta':True,
         'line_search':  False,
+        'metric bound': bound,
+
         
     }
 
@@ -280,7 +279,7 @@ if run_PDHG:
         'PrimalSmooth': objectiveSmooth
     }
     
-    output = PDHG_LiPm(model,oracle,options,tol, maxiter,check);
+    output = PDAL(model,oracle,options,tol, maxiter,check);
     
     xs.append(output['sol']);
     rs.append(output['seq_res']);
@@ -297,7 +296,7 @@ if run_PDHG:
 ############################################################################
 
 #####################################################################
-if run_PDHG_LiPm:
+if run_PDAL:
     
     print('');
     print('********************************************************');
@@ -310,7 +309,7 @@ if run_PDHG_LiPm:
         'theta':          1.0,
         'beta':            beta,
         'delta':           0.9,
-        'epsilon':         1e-10,
+        'epsilon':         1e-1,
         'storeResidual': True,
         'storeTime':     True,   
         'stepsize':       2,
@@ -319,6 +318,8 @@ if run_PDHG_LiPm:
         'storeObjective':True,
         'storeBeta':True,
         'line_search':  True,
+        'metric bound': bound,
+
         
     }
 
@@ -332,7 +333,7 @@ if run_PDHG_LiPm:
         'PrimalSmooth': objectiveSmooth
     }
     
-    output = PDHG_LiPm(model,oracle,options,tol, maxiter,check);
+    output = PDAL(model,oracle,options,tol, maxiter,check);
     
     xs.append(output['sol']);
     rs.append(output['seq_res']);
@@ -348,8 +349,8 @@ if run_PDHG_LiPm:
     mpimg.imsave(filename + "reconstruction(line search).png", x.reshape(ny,nx), cmap=plt.cm.gray);
 ############################################################################
 
-"""
-if run_PDHG_VaLiPm:
+
+if run_VarPDAL:
     m =1
     print('');
     print('********************************************************');
@@ -362,7 +363,7 @@ if run_PDHG_VaLiPm:
         'theta':          1.0,
         'beta':            1,
         'delta':           0.9,
-        'epsilon':         1e-10,
+        'epsilon':         1e-1,
         'storeResidual': True,
         'storeTime':     True,   
         'stepsize':       sig0,
@@ -385,7 +386,7 @@ if run_PDHG_VaLiPm:
         'PrimalSmooth': objectiveSmooth
     }
     
-    output = PDHG_VaLiPm(model,oracle,options,tol, maxiter,check);
+    output = VarPDAL(model,oracle,options,tol, maxiter,check);
     
     xs.append(output['sol']);
     rs.append(output['seq_res']);
@@ -399,12 +400,12 @@ if run_PDHG_VaLiPm:
     
     #mpimg.imsave(filename + "reconstruction(variable metric line search).png", x.reshape(ny,nx), cmap=plt.cm.gray);
 ############################################################################
-"""
-"""
+
+
 ############################################################################
 
 
-if run_PDHG_VaLiPm:
+if run_VarPDAL:
     m =5
     print('');
     print('********************************************************');
@@ -417,7 +418,7 @@ if run_PDHG_VaLiPm:
         'theta':          1.0,
         'beta':            1,
         'delta':           0.9,
-        'epsilon':         1e-10,
+        'epsilon':         1e-1,
         'storeResidual': True,
         'storeTime':     True,   
         'stepsize':       sig0,
@@ -440,7 +441,7 @@ if run_PDHG_VaLiPm:
         'PrimalSmooth': objectiveSmooth
     }
     
-    output = PDHG_VaLiPm(model,oracle,options,tol, maxiter,check);
+    output = VarPDAL(model,oracle,options,tol, maxiter,check);
     
     xs.append(output['sol']);
     rs.append(output['seq_res']);
@@ -455,11 +456,11 @@ if run_PDHG_VaLiPm:
     #mpimg.imsave(filename + "reconstruction(variable metric line search).png", x.reshape(ny,nx), cmap=plt.cm.gray);
 ############################################################################
 
-"""
 
 
 
-if run_PDHG_VaLiPm:
+
+if run_VarPDAL:
     m =1
     print('');
     print('********************************************************');
@@ -472,7 +473,7 @@ if run_PDHG_VaLiPm:
         'theta':          1.0,
         'beta':            beta,
         'delta':           0.9,
-        'epsilon':         1e-10,
+        'epsilon':         1e-1,
         'storeResidual': True,
         'storeTime':     True,   
         'stepsize':       1,
@@ -481,7 +482,10 @@ if run_PDHG_VaLiPm:
         'storeObjective':True,
         'storeBeta':True,
         'line_search':  True,
-        'method':      'mBFGS'
+        'method':      'mBFGS',
+        'metric bound': bound,
+
+        
     }
 
     oracle = {
@@ -494,7 +498,7 @@ if run_PDHG_VaLiPm:
         'PrimalSmooth': objectiveSmooth
     }
     
-    output = PDHG_VaLiPm(model,oracle,options,tol, maxiter,check);
+    output = VarPDAL(model,oracle,options,tol, maxiter,check);
     
     xs.append(output['sol']);
     rs.append(output['seq_res']);
@@ -510,7 +514,7 @@ if run_PDHG_VaLiPm:
 
 
 ############################################################################
-if run_PDHG_VaLiPm:
+if run_VarPDAL:
     m = 3
     
     print('');
@@ -524,7 +528,7 @@ if run_PDHG_VaLiPm:
         'theta':          1.0,
         'beta':            beta,
         'delta':           0.9,
-        'epsilon':         1e-10,
+        'epsilon':         1e-1,
         'storeResidual': True,
         'storeTime':     True,   
         'stepsize':       1,
@@ -533,7 +537,9 @@ if run_PDHG_VaLiPm:
         'storeObjective':True,
         'storeBeta':True,
         'line_search':  True,
-        'method':      'mBFGS'
+        'method':      'mBFGS',
+        'metric bound': bound,
+
     }
 
     oracle = {
@@ -546,7 +552,7 @@ if run_PDHG_VaLiPm:
         'PrimalSmooth': objectiveSmooth
     }
     
-    output = PDHG_VaLiPm(model,oracle,options,tol, maxiter,check);
+    output = VarPDAL(model,oracle,options,tol, maxiter,check);
     
     xs.append(output['sol']);
     rs.append(output['seq_res']);
@@ -563,7 +569,7 @@ if run_PDHG_VaLiPm:
 
 
 ############################################################################
-if run_PDHG_VaLiPm:
+if run_VarPDAL:
     m = 5
     print('');
     print('********************************************************');
@@ -576,7 +582,7 @@ if run_PDHG_VaLiPm:
         'theta':          1.0,
         'beta':            beta,
         'delta':           0.9,
-        'epsilon':         1e-10,
+        'epsilon':         1e-1,
         'storeResidual': True,
         'storeTime':     True,   
         'stepsize':       1,
@@ -585,7 +591,9 @@ if run_PDHG_VaLiPm:
         'storeObjective':True,
         'storeBeta':True,
         'line_search':  True,
-        'method':      'mBFGS'
+        'method':      'mBFGS',        
+        'metric bound': bound,
+
     }
 
     oracle = {
@@ -598,7 +606,7 @@ if run_PDHG_VaLiPm:
         'PrimalSmooth': objectiveSmooth
     }
     
-    output = PDHG_VaLiPm(model,oracle,options,tol, maxiter,check);
+    output = VarPDAL(model,oracle,options,tol, maxiter,check);
     
     xs.append(output['sol']);
     rs.append(output['seq_res']);
@@ -616,7 +624,7 @@ if run_PDHG_VaLiPm:
 
 
 
-if run_PDHG_VaLiPm:
+if run_VarPDAL:
     m = 7
     print('');
     print('********************************************************');
@@ -629,7 +637,7 @@ if run_PDHG_VaLiPm:
         'theta':          1.0,
         'beta':            beta,
         'delta':           0.9,
-        'epsilon':         1e-10,
+        'epsilon':         1e-1,
         'storeResidual': True,
         'storeTime':     True,   
         'stepsize':       1,
@@ -638,7 +646,9 @@ if run_PDHG_VaLiPm:
         'storeObjective':True,
         'storeBeta':True,
         'line_search':  True,
-        'method':      'mBFGS'
+        'method':      'mBFGS',
+        'metric bound': bound,
+
     }
 
     oracle = {
@@ -651,7 +661,7 @@ if run_PDHG_VaLiPm:
         'PrimalSmooth': objectiveSmooth
     }
     
-    output = PDHG_VaLiPm(model,oracle,options,tol, maxiter,check);
+    output = VarPDAL(model,oracle,options,tol, maxiter,check);
     
     xs.append(output['sol']);
     rs.append(output['seq_res']);
@@ -667,7 +677,7 @@ if run_PDHG_VaLiPm:
 
 
 ############################################################################
-if run_PDHG_VaLiPm:
+if run_VarPDAL:
     m = 9
     print('');
     print('********************************************************');
@@ -680,7 +690,7 @@ if run_PDHG_VaLiPm:
         'theta':          1.0,
         'beta':            beta,
         'delta':           0.9,
-        'epsilon':         1e-10,
+        'epsilon':         1e-1,
         'storeResidual': True,
         'storeTime':     True,   
         'stepsize':       1,
@@ -689,7 +699,9 @@ if run_PDHG_VaLiPm:
         'storeObjective':True,
         'storeBeta':True,
         'line_search':  True,
-        'method':      'mBFGS'
+        'method':      'mBFGS',
+        'metric bound': bound,
+
     }
 
     oracle = {
@@ -702,7 +714,7 @@ if run_PDHG_VaLiPm:
         'PrimalSmooth': objectiveSmooth
     }
     
-    output = PDHG_VaLiPm(model,oracle,options,tol, maxiter,check);
+    output = VarPDAL(model,oracle,options,tol, maxiter,check);
     
     xs.append(output['sol']);
     rs.append(output['seq_res']);
@@ -745,64 +757,6 @@ if run_PDHG_VaLiPm:
 
 
 
-
-
-
-
-"""
-###############################################################################
-
-if run_PDHG_PrLiPm:
-    
-    print('');
-    print('********************************************************');
-    print('***PDHG Line search on the Primal varaible***');
-    print('***********');
-    
-    options = {
-        'init_x':          x0,
-        'init_y':          y0,
-        'theta':          1.0,
-        'beta':            1,
-        'delta':           0.9,
-        'epsilon':         0.0000001,
-        'storeResidual': True,
-        'storeTime':     True,   
-        'stepsize':       1,
-        'storePoints':True,
-        'memory':      5,
-        'storeObjective':True,
-        'storeBeta':True,
-        'line_search':  True,
-        'method':      'mSR1',
-        'metric bound': bound,
-    }
-
-    oracle = {
-        'obj':   objective,
-        'objNonSm':    objectiveNonSmooth,
-        'grad':   grad_Smooth,   
-        'prox_g':   prox_orthant,
-        'prox_fstar':  prox_proj_ball,
-        'residual': residual,
-        'PrimalSmooth': objectiveSmooth
-    }
-    
-    output = PDHG_PrLiPm(model,oracle,options,tol, maxiter,check);
-    
-    xs.append(output['sol']);
-    rs.append(output['seq_res']);
-    ts.append(output['seq_time']);
-    cols.append((0,0.5,1,1));
-    legs.append('Preconditioning ');
-    nams.append('Lin');
-    x = output['sol'];
-    nx = model['nx']
-    ny = model['ny']
-    #mpimg.imsave(filename + "reconstruction(Preconditioning line search).png", x.reshape(ny,nx), cmap=plt.cm.gray);
-############################################################################
-
-"""
 
 
 
@@ -855,9 +809,8 @@ plt.show();
 
 
 
+
 """
-
-
 ###############################################################################
 
 # taping:
@@ -871,8 +824,8 @@ nams = [];
 
 # turn algorithms to be run on or off
 run_PDHG = 1;
-run_PDHG_LiPm = 1;
-run_PDHG_VaLiPm = 1;
+run_PDAL = 1;
+run_VarPDAL = 1;
 run_PDHG_PrLiPm = 0
 
 
@@ -915,7 +868,7 @@ if run_PDHG:
         'PrimalSmooth': objectiveSmooth
     }
     
-    output = PDHG_LiPm(model,oracle,options,tol, maxiter,check);
+    output = PDAL(model,oracle,options,tol, maxiter,check);
     
     xs.append(output['sol']);
     rs.append(output['seq_res']);
@@ -932,7 +885,7 @@ if run_PDHG:
 ############################################################################
 
 #####################################################################
-if run_PDHG_LiPm:
+if run_PDAL:
     
     print('');
     print('********************************************************');
@@ -968,7 +921,7 @@ if run_PDHG_LiPm:
         'PrimalSmooth': objectiveSmooth
     }
     
-    output = PDHG_LiPm(model,oracle,options,tol, maxiter,check);
+    output = PDAL(model,oracle,options,tol, maxiter,check);
     
     xs.append(output['sol']);
     rs.append(output['seq_res']);
@@ -985,7 +938,7 @@ if run_PDHG_LiPm:
 ############################################################################
 
 
-if run_PDHG_VaLiPm:
+if run_VarPDAL:
     m =1
     print('');
     print('********************************************************');
@@ -1021,7 +974,7 @@ if run_PDHG_VaLiPm:
         'PrimalSmooth': objectiveSmooth
     }
     
-    output = PDHG_VaLiPm(model,oracle,options,tol, maxiter,check);
+    output = VarPDAL(model,oracle,options,tol, maxiter,check);
     
     xs.append(output['sol']);
     rs.append(output['seq_res']);
@@ -1039,7 +992,7 @@ if run_PDHG_VaLiPm:
 ############################################################################
 
 
-if run_PDHG_VaLiPm:
+if run_VarPDAL:
     m =5
     print('');
     print('********************************************************');
@@ -1075,7 +1028,7 @@ if run_PDHG_VaLiPm:
         'PrimalSmooth': objectiveSmooth
     }
     
-    output = PDHG_VaLiPm(model,oracle,options,tol, maxiter,check);
+    output = VarPDAL(model,oracle,options,tol, maxiter,check);
     
     xs.append(output['sol']);
     rs.append(output['seq_res']);
@@ -1092,7 +1045,7 @@ if run_PDHG_VaLiPm:
 
 
 ############################################################################
-if run_PDHG_VaLiPm:
+if run_VarPDAL:
     m = 9
     print('');
     print('********************************************************');
@@ -1128,7 +1081,7 @@ if run_PDHG_VaLiPm:
         'PrimalSmooth': objectiveSmooth
     }
     
-    output = PDHG_VaLiPm(model,oracle,options,tol, maxiter,check);
+    output = VarPDAL(model,oracle,options,tol, maxiter,check);
     
     xs.append(output['sol']);
     rs.append(output['seq_res']);
@@ -1183,7 +1136,7 @@ plt.savefig('deblurring image under Poisson noise BFGS(time) New Second.pdf')
 plt.show();
 
 
-
+"""
 
 
 
